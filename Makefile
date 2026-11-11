@@ -1,6 +1,7 @@
-PYTHON		= python3
+VENV		= .venv
+PYTHON		= $(VENV)/bin/python
 MAIN		= fly_in.py
-MAP			?= maps/easy/01_linear_path.txt
+MAP			?= src/maps/easy/01_linear_path.txt
 MYPY_FLAGS	= --warn-return-any --warn-unused-ignores --ignore-missing-imports \
 			  --disallow-untyped-defs --check-untyped-defs
 
@@ -28,6 +29,7 @@ logo:
 	@printf "$(TEAL)%s$(RESET)\n"  '    ██║     ███████╗██║         ██║██║ ╚████║'
 	@printf "$(TEAL)%s$(RESET)\n"  '    ╚═╝     ╚══════╝╚═╝         ╚═╝╚═╝  ╚═══╝'
 	@printf "\n$(YELLOW)%s$(RESET)  $(BOLD)%s$(RESET)  $(YELLOW)%s$(RESET)\n\n" \
+		'-=(o)=-' 'Drones are interesting.' '-=(o)=-'
 
 help: logo
 	@printf "$(BOLD)$(CYAN)Fly-in$(RESET) - available rules:\n"
@@ -36,19 +38,27 @@ help: logo
 		"run"         "run the simulation  (MAP=path/to/map.txt)" \
 		"debug"       "run under pdb       (MAP=path/to/map.txt)" \
 		"clean"       "remove caches" \
+		"fclean"      "remove caches + venv" \
+		"re"          "fclean + install" \
 		"lint"        "flake8 + mypy" \
 		"lint-strict" "flake8 + mypy --strict"
 
-install:
-	$(TITLE) "Installing dependencies"
-	@$(PYTHON) -m pip install -r requirements.txt
-	$(OK) "Dependencies installed"
+$(VENV)/bin/activate: requirements.txt
+	$(TITLE) "Creating the virtual environment in $(VENV)"
+	@python3 -m venv $(VENV)
+	@$(PYTHON) -m pip install --quiet --upgrade pip
+	@$(PYTHON) -m pip install --quiet -r requirements.txt
+	@touch $(VENV)/bin/activate
+	$(OK) "Dependencies installed (flake8, mypy, pytest, pygame-ce)"
 
-run:
+install: $(VENV)/bin/activate
+	$(OK) "Environment ready in $(VENV)"
+
+run: $(VENV)/bin/activate
 	$(TITLE) "Running $(MAIN) on $(MAP)"
 	@$(PYTHON) $(MAIN) $(MAP)
 
-debug:
+debug: $(VENV)/bin/activate
 	$(TITLE) "Debugging $(MAIN) on $(MAP) (type 'c' to continue, 'q' to quit)"
 	@$(PYTHON) -m pdb $(MAIN) $(MAP)
 
@@ -58,21 +68,28 @@ clean:
 	@find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 	$(OK) "Clean"
 
-lint:
+fclean: clean
+	$(TITLE) "Removing $(VENV)"
+	@rm -rf $(VENV)
+	$(OK) "Full clean"
+
+re: fclean install
+
+lint: $(VENV)/bin/activate
 	$(TITLE) "flake8"
-	@flake8 . && printf "$(GREEN)✔ flake8 OK$(RESET)\n" \
+	@$(PYTHON) -m flake8 . && printf "$(GREEN)✔ flake8 OK$(RESET)\n" \
 		|| (printf "$(RED)✘ flake8 failed$(RESET)\n"; exit 1)
 	$(TITLE) "mypy"
-	@mypy . $(MYPY_FLAGS) && printf "$(GREEN)✔ mypy OK$(RESET)\n" \
+	@$(PYTHON) -m mypy . $(MYPY_FLAGS) && printf "$(GREEN)✔ mypy OK$(RESET)\n" \
 		|| (printf "$(RED)✘ mypy failed$(RESET)\n"; exit 1)
 
-lint-strict:
+lint-strict: $(VENV)/bin/activate
 	$(TITLE) "flake8"
-	@flake8 . && printf "$(GREEN)✔ flake8 OK$(RESET)\n" \
+	@$(PYTHON) -m flake8 . && printf "$(GREEN)✔ flake8 OK$(RESET)\n" \
 		|| (printf "$(RED)✘ flake8 failed$(RESET)\n"; exit 1)
 	$(TITLE) "mypy --strict"
-	@mypy . --strict && printf "$(GREEN)✔ mypy strict OK$(RESET)\n" \
+	@$(PYTHON) -m mypy . --strict && printf "$(GREEN)✔ mypy strict OK$(RESET)\n" \
 		|| (printf "$(RED)✘ mypy strict failed$(RESET)\n"; exit 1)
 
 
-.PHONY: help install run debug clean lint lint-strict logo
+.PHONY: help install run debug clean fclean re lint lint-strict logo

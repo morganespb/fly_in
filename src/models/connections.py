@@ -1,6 +1,5 @@
 """bidirectional connections / edges of the network"""
 
-from typing import frozenset
 from .zones import Zone
 
 
